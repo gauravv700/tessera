@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: ai, namespace: trading }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: ai } }
+  template:
+    metadata: { labels: { app: ai } }
+    spec:
+      containers:
+        - name: ai
+          image: ghcr.io/YOUR_ORG/trading-ai:latest
+          ports: [{ containerPort: 8000 }]
+          envFrom: [{ secretRef: { name: trading-secrets } }]
+          readinessProbe: { httpGet: { path: /health, port: 8000 } }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: ai, namespace: trading }
+spec: { selector: { app: ai }, ports: [{ port: 8000, targetPort: 8000 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: frontend, namespace: trading }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: frontend } }
+  template:
+    metadata: { labels: { app: frontend } }
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/YOUR_ORG/trading-frontend:latest   # build with --build-arg NEXT_PUBLIC_API_URL=https://api.trading.example.com
+          ports: [{ containerPort: 3000 }]
+          readinessProbe: { httpGet: { path: /, port: 3000 } }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 256Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: frontend, namespace: trading }
+spec: { selector: { app: frontend }, ports: [{ port: 3000, targetPort: 3000 }] }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: trading
+  namespace: trading
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"   # long-lived WebSockets
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: trading.example.com
+      http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: frontend, port: { number: 3000 } } } }] }
+    - host: api.trading.example.com
+      http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: api, port: { number: 4000 } } } }] }

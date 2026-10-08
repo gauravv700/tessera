@@ -1,0 +1,23 @@
+# Single-writer tier. The matching engine holds the order book in memory, so exactly ONE replica per shard.
+# Scale out by sharding symbols across several StatefulSets/Deployments (one per shard), not by adding replicas.
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: worker, namespace: trading, labels: { app: worker } }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }   # never run two matching engines at once, even during a rollout
+  selector: { matchLabels: { app: worker } }
+  template:
+    metadata:
+      labels: { app: worker }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "4000", prometheus.io/path: /metrics }
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/YOUR_ORG/trading-backend:latest
+          env:
+            - { name: ROLES, value: "matching,settlement,notifications,marketdata" }   # bots off in prod
+            - { name: BOT_ENABLED, value: "false" }
+          envFrom: [{ configMapRef: { name: trading-config } }, { secretRef: { name: trading-secrets } }]
+          readinessProbe: { httpGet: { path: /health, port: 4000 }, periodSeconds: 5 }
+          resources: { requests: { cpu: 500m, memory: 512Mi }, limits: { cpu: "2", memory: 1Gi } }

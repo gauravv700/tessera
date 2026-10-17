@@ -11,7 +11,7 @@ It also includes TimescaleDB market data, MongoDB notifications, and a Python AI
 ![Redis](https://img.shields.io/badge/Redis-read%20model-DC382D?logo=redis&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
-![Tessera trading terminal](./docs/screenshots/terminal.png)
+![Tessera trading terminal](docs/screenshots/tessera.png)
 
 > Replace the image above with a screenshot of the trading terminal. A short GIF of an order being placed and the order book updating live works even better.
 

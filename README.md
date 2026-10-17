@@ -1,6 +1,8 @@
 # Tessera: Real-Time Trading Platform
 
-An event-driven trading platform with a price-time-priority matching engine, a Kafka event log, horizontally scalable WebSocket fan-out, TimescaleDB market data, MongoDB notifications and a Python AI service (RAG assistant, anomaly detection, technical signals). Fully self-hosted with Docker.
+An event-driven trading platform built around a price-time-priority matching engine and a Kafka event log. Orders are matched deterministically, settled atomically in Postgres, and streamed live to a Next.js trading terminal over horizontally scalable WebSockets.
+
+It also includes TimescaleDB market data, MongoDB notifications, and a Python AI service (RAG assistant, anomaly detection, technical signals). Fully self-hosted with Docker.
 
 ![NestJS](https://img.shields.io/badge/NestJS-TypeScript-E0234E?logo=nestjs&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)
@@ -9,14 +11,45 @@ An event-driven trading platform with a price-time-priority matching engine, a K
 ![Redis](https://img.shields.io/badge/Redis-read%20model-DC382D?logo=redis&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
+![Tessera trading terminal](./docs/screenshots/terminal.png)
+
+> Replace the image above with a screenshot of the trading terminal. A short GIF of an order being placed and the order book updating live works even better.
+
+## Table of Contents
+
+- [Highlights](#highlights)
+- [Tech stack](#tech-stack)
+- [Performance](#performance-local-load-tests)
+- [Quick start](#quick-start)
+- [Architecture](#architecture)
+- [Design decisions](#design-decisions)
+- [Repository layout](#repository-layout)
+- [Tests](#tests)
+- [Load testing](#load-testing)
+- [Status and known limitations](#status-and-known-limitations)
+- [Roadmap](#roadmap)
+- [Author](#author)
+
 ## Highlights
 
 - **Deterministic matching.** A single-writer, in-memory order book per symbol, fed by Kafka (key = symbol) so each symbol's orders are processed in strict sequence. Price-time priority, fills at the maker's price, self-trade prevention.
-- **Exact money.** Scaled integers and `BigInt` at the wallet boundary; no floats touch money. A 20,000-order randomized simulation confirmed totals are conserved, no balance goes negative and nothing stays locked after cancels.
+- **Exact money.** Scaled integers and `BigInt` at the wallet boundary, so no floats touch money. A 20,000-order randomized simulation confirmed that totals are conserved, no balance goes negative, and nothing stays locked after cancels.
 - **Safe under redelivery.** At-least-once Kafka processing made idempotent: trade inserts use `ON CONFLICT DO NOTHING`, cancels are status-guarded, and the engine skips orders already on the book.
 - **Scales horizontally.** Stateless API replicas behind nginx. WebSockets use the Socket.io Redis adapter with websocket-only transport, so no sticky sessions are needed.
 - **Fails gracefully.** The AI service sits behind a circuit breaker and timeouts, so AI failures never block trade processing.
-- **Observable.** Prometheus metrics, OpenTelemetry traces to Jaeger, JSON logs to Loki and a provisioned Grafana dashboard.
+- **Observable.** Prometheus metrics, OpenTelemetry traces to Jaeger, JSON logs to Loki, and a provisioned Grafana dashboard.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Backend | NestJS, TypeScript, Socket.io |
+| Frontend | Next.js 14 (App Router), React, TypeScript |
+| Messaging | Apache Kafka |
+| Databases | PostgreSQL + TimescaleDB, MongoDB, Redis, pgvector |
+| AI service | FastAPI (Python): RAG, anomaly detection, SMA/RSI signals, sentiment |
+| Infra and tooling | Docker Compose, nginx, Kubernetes manifests, GitHub Actions, k6 |
+| Observability | Prometheus, Grafana, OpenTelemetry, Jaeger, Loki |
 
 ## Performance (local load tests)
 
@@ -31,7 +64,7 @@ Measured with the k6 scripts in `infra/k6/`. All runs were on a single laptop ru
 Notes on reading these numbers:
 
 - Order latency is **acceptance latency**: `POST /orders` returns once funds are locked and the command is published to Kafka. Matching and settlement happen asynchronously afterwards.
-- An early run with a single test user showed a 1.4 s p95 and 23% rejections (insufficient balance) because every order locked the same wallet row. Spreading load across 100 wallets removed both. Wallet-row lock contention is the likely cause, not a confirmed one.
+- An early run with a single test user showed a 1.4 s p95 and 23% rejections because every order locked the same wallet row (the rejections were insufficient-balance errors). Spreading load across 100 wallets removed both. Wallet-row lock contention is the most likely cause of the latency, though not a confirmed one.
 - The breakpoint figure is estimated from the ramp timing at the moment k6 aborted.
 
 To reproduce, see [Load testing](#load-testing).
@@ -41,6 +74,8 @@ To reproduce, see [Load testing](#load-testing).
 Requires Docker with Compose v2.
 
 ```bash
+git clone https://github.com/gauravv700/<your-repo-name>.git
+cd <your-repo-name>
 cp .env.example .env
 docker compose up --build
 ```
@@ -73,16 +108,18 @@ flowchart LR
   UI["Next.js UI"] -->|"REST + WebSocket"| LB["nginx load balancer"]
   LB --> API1["API replica 1"]
   LB --> API2["API replica 2"]
+  API1 -->|"lock funds + insert order<br/>(one transaction)"| PG
+  API2 -->|"lock funds + insert order<br/>(one transaction)"| PG
   API1 -->|"orders.commands"| K[("Kafka")]
   API2 -->|"orders.commands"| K
-  K -->|"consume"| M["Matching engine<br/>in-memory book, single writer"]
+  K -->|"consume<br/>key = symbol"| M["Matching engine<br/>in-memory book, single writer"]
   M -->|"matching.events"| K
   M -->|"depth snapshot + emit"| R[("Redis")]
   R -.->|"socket.io adapter"| API1
   R -.->|"socket.io adapter"| API2
-  K --> S["Settlement"]
-  S --> PG[("Postgres / TimescaleDB<br/>orders, trades, wallets, ticks")]
-  K --> N["Notifications"]
+  K -->|"matching.events"| S["Settlement"]
+  S -->|"ACID transaction"| PG[("Postgres / TimescaleDB<br/>orders, trades, wallets, ticks")]
+  K -->|"matching.events"| N["Notifications"]
   N --> MG[("MongoDB")]
   N -->|"anomaly check"| AI["FastAPI AI service<br/>RAG, signals, anomaly"]
   API1 -->|"/ai/*"| AI
@@ -91,10 +128,46 @@ flowchart LR
 
 ### Order lifecycle
 
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant API as API replica
+  participant PG as Postgres
+  participant K as Kafka
+  participant ME as Matching engine
+  participant ST as Settlement
+  participant NT as Notifications
+  participant R as Redis
+
+  User->>API: POST /orders
+  API->>PG: Lock funds + insert order (one transaction)
+  API->>K: Publish place command (orders.commands, key = symbol)
+  API-->>User: 201 Accepted
+  K->>ME: Consume command in order
+  ME->>ME: Match by price-time priority
+  ME->>K: Publish trade / cancel events (matching.events)
+  ME->>R: Write depth snapshot
+  K->>ST: Consume events
+  ST->>PG: Update orders, trades, wallets (ACID)
+  K->>NT: Consume events
+  NT-->>User: Push over WebSocket (via Redis adapter)
+```
+
 1. `POST /orders` runs one Postgres transaction that locks funds and inserts the order, then publishes a `place` command to `orders.commands` (keyed by symbol).
 2. The matching engine (single writer per symbol shard) consumes commands in order, matches by price-time priority and publishes `trade` and `cancel` events to `matching.events`.
 3. Independent consumer groups react to the same event log. **Settlement** updates orders, trades and wallets in one ACID transaction. **Notifications** write to MongoDB, push over WebSocket and run an anomaly check.
 4. The engine writes the book to Redis (`depth:<symbol>`), the CQRS read model behind `GET /market/depth` and the WebSocket snapshots.
+
+### What each data store is for
+
+| Store | Used for |
+|---|---|
+| **Kafka** | Event log: `orders.commands` (inputs) and `matching.events` (trades and cancels) |
+| **Postgres / TimescaleDB** | System of record: orders, trades, wallets, and time-series ticks |
+| **Redis** | Order-book read model, rotating refresh tokens, Socket.io adapter |
+| **MongoDB** | User notifications |
+| **pgvector** | Embeddings for the AI assistant's RAG knowledge base |
 
 ### Roles
 
@@ -104,7 +177,7 @@ One image, selected by `ROLES=api,matching,settlement,notifications,marketdata,b
 
 | Decision | Why |
 |---|---|
-| Scaled integers and `BigInt` for money | No floating-point drift; totals are provably conserved |
+| Scaled integers and `BigInt` for money | No floating-point drift; conservation of totals is checked by a 20,000-order simulation |
 | Kafka key = symbol | One partition per symbol gives strict per-symbol ordering |
 | Trades and cancels share one topic | A consumer can never see a cancel before an earlier fill |
 | Idempotent consumers instead of "exactly once" | Simpler, and safe under redelivery |
@@ -153,6 +226,8 @@ The order test registers 100 users (override with `-e USERS=200`) and spreads or
 
 ## Status and known limitations
 
+This is an actively developed project, and these are the known gaps:
+
 - **Simulated market data.** Prices are a random walk seeded on first boot. The feed is one function (`MarketDataService.next`) that you can replace with a real exchange WebSocket.
 - **Limit orders only.** No market orders, fees or margin.
 - **Transactional outbox missing.** If Kafka is down after the order row commits, the order is compensated (cancelled and funds released), but a hard crash in that window could leave funds locked. A transactional outbox closes this gap.
@@ -163,12 +238,19 @@ The order test registers 100 users (override with `-e USERS=200`) and spreads or
 
 ## Roadmap
 
-- Transactional outbox for order publishing
-- Symbol sharding across matching workers
-- Standby engine that replays the event log to keep a warm book
-- Market orders and fees
-- httpOnly cookie auth and TOTP 2FA
+- [ ] Transactional outbox for order publishing
+- [ ] Symbol sharding across matching workers
+- [ ] Standby engine that replays the event log to keep a warm book
+- [ ] Market orders and fees
+- [ ] httpOnly cookie auth and TOTP 2FA
 
 ## Cost
 
-Everything runs free on your own machine. Optional paid pieces are the Anthropic API (pay-per-token; Ollama is the free alternative) and cloud hosting if you deploy the Kubernetes manifests.
+Everything runs free on your own machine. The Anthropic API (pay-per-token) and cloud hosting are optional; Ollama is the free alternative for LLM answers.
+
+## Author
+
+**Gaurav Kumar**
+[LinkedIn](https://linkedin.com/in/gaurav700) · [GitHub](https://github.com/gauravv700) · [Portfolio](https://gaurav700.vercel.app)
+
+If you found this project useful, consider giving it a ⭐

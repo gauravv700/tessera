@@ -1,14 +1,14 @@
+import "dotenv/config";
 const isProd = process.env.NODE_ENV === "production";
 
 export const cfg = {
   port: Number(process.env.PORT ?? 4000),
-  dbUrl:
-    process.env.DATABASE_URL ??
+  dbUrl: process.env.DATABASE_URL ??
     "postgres://trading:trading@localhost:5432/trading",
   dbSync: (process.env.DB_SYNC ?? "true") === "true", // use migrations instead in a real prod rollout
   redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
   mongoUrl: process.env.MONGO_URL ?? "",
-  kafkaBrokers: (process.env.KAFKA_BROKERS ?? "localhost:29092")
+  kafkaBrokers: (process.env.KAFKA_BROKERS ?? "localhost:9092")
     .split(",")
     .filter(Boolean),
   kafkaPartitions: Number(process.env.KAFKA_PARTITIONS ?? 3),
@@ -28,3 +28,5 @@ if (isProd && cfg.jwtSecret === "dev-secret-change-me") {
 /** A process can run any subset of: api, matching, settlement, notifications, marketdata, bot. */
 export const hasRole = (role: string): boolean =>
   cfg.roles.has("all") || cfg.roles.has(role);
+
+console.log(cfg.kafkaBrokers)

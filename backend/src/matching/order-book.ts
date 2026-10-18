@@ -1,4 +1,4 @@
-export type Side = 'BUY' | 'SELL';
+export type Side = "BUY" | "SELL";
 
 /** All numbers are scaled integers (price: 2dp, qty: 6dp) so matching is exact. */
 export interface BookOrder {
@@ -51,7 +51,7 @@ export class OrderBook {
 
   submit(order: BookOrder): SubmitResult {
     const fills: Fill[] = [];
-    const isBuy = order.side === 'BUY';
+    const isBuy = order.side === "BUY";
     const levels = isBuy ? this.asks : this.bids;
     const prices = isBuy ? this.askPrices : this.bidPrices;
     let stpCancelled = false;
@@ -108,7 +108,7 @@ export class OrderBook {
 
   /** Put an order on the book without matching (used when rebuilding state on boot). */
   rest(order: BookOrder): void {
-    const isBuy = order.side === 'BUY';
+    const isBuy = order.side === "BUY";
     const levels = isBuy ? this.bids : this.asks;
     const prices = isBuy ? this.bidPrices : this.askPrices;
     let queue = levels.get(order.price);
@@ -124,7 +124,7 @@ export class OrderBook {
   cancel(id: string): BookOrder | undefined {
     const order = this.index.get(id);
     if (!order) return undefined;
-    const isBuy = order.side === 'BUY';
+    const isBuy = order.side === "BUY";
     const levels = isBuy ? this.bids : this.asks;
     const prices = isBuy ? this.bidPrices : this.askPrices;
     const queue = levels.get(order.price)!;
@@ -139,11 +139,26 @@ export class OrderBook {
 
   depth(limit = 20): { bids: [number, number][]; asks: [number, number][] } {
     const agg = (prices: number[], levels: Map<number, BookOrder[]>) =>
-      prices.slice(0, limit).map((p) => [p, levels.get(p)!.reduce((s, o) => s + o.remaining, 0)] as [number, number]);
-    return { bids: agg(this.bidPrices, this.bids), asks: agg(this.askPrices, this.asks) };
+      prices
+        .slice(0, limit)
+        .map(
+          (p) =>
+            [p, levels.get(p)!.reduce((s, o) => s + o.remaining, 0)] as [
+              number,
+              number,
+            ],
+        );
+    return {
+      bids: agg(this.bidPrices, this.bids),
+      asks: agg(this.askPrices, this.asks),
+    };
   }
 
-  private insertPrice(prices: number[], price: number, descending: boolean): void {
+  private insertPrice(
+    prices: number[],
+    price: number,
+    descending: boolean,
+  ): void {
     let lo = 0;
     let hi = prices.length;
     while (lo < hi) {

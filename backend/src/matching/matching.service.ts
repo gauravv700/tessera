@@ -26,9 +26,7 @@ import { OrderBook } from "./order-book";
 @Injectable()
 export class MatchingService implements OnModuleInit {
   private readonly log = new Logger(MatchingService.name);
-  private books = new Map<string, OrderBook>(
-    SYMBOL_LIST.map((s) => [s, new OrderBook()]),
-  );
+  private books = new Map<string, OrderBook>(SYMBOL_LIST.map((s) => [s, new OrderBook()]));
   private depthTimers = new Set<string>();
 
   constructor(

@@ -1,12 +1,52 @@
 [
-  {"id": 1, "title": "Sample: Bitcoin consolidates as ETF inflows slow", "text": "Bitcoin traded in a tight range this week as spot ETF inflows slowed. Analysts say consolidation after a strong rally is normal, and support levels are being watched closely."},
-  {"id": 2, "title": "Sample: Ethereum upgrade lowers layer-2 fees", "text": "A recent Ethereum network upgrade reduced data costs for layer-2 rollups, lowering transaction fees. Developers expect higher on-chain activity and improved user experience."},
-  {"id": 3, "title": "Sample: Solana network activity hits new high", "text": "Solana recorded a new high in daily active addresses, driven by decentralized exchange volume. Validators reported stable performance despite the increased load."},
-  {"id": 4, "title": "Sample: What is a limit order?", "text": "A limit order is an instruction to buy or sell at a specified price or better. A buy limit order executes at the limit price or lower, a sell limit order at the limit price or higher. Unfilled limit orders rest on the order book."},
-  {"id": 5, "title": "Sample: How price-time priority works", "text": "Exchanges match orders using price-time priority: the best price is filled first, and among equal prices the order that arrived earlier is filled first. This rewards liquidity providers who quote tighter prices."},
-  {"id": 6, "title": "Sample: Understanding the bid-ask spread", "text": "The bid-ask spread is the gap between the highest bid and the lowest ask. Tight spreads indicate deep liquidity, wide spreads indicate thin markets and higher trading costs, especially for market takers."},
-  {"id": 7, "title": "Sample: Risk management basics", "text": "Position sizing, stop-loss levels and diversification are core risk management tools. Traders commonly risk only a small percentage of capital on a single trade to survive losing streaks."},
-  {"id": 8, "title": "Sample: Reading RSI and moving averages", "text": "The relative strength index above 70 is often read as overbought and below 30 as oversold. A fast moving average crossing above a slow one is a common bullish signal, but signals lag and can whipsaw in ranging markets."},
-  {"id": 9, "title": "Sample: Crypto volatility and leverage", "text": "Crypto assets are highly volatile. Leverage amplifies both gains and losses, and sudden price moves can trigger liquidations. Beginners are advised to avoid leverage until they understand margin rules."},
-  {"id": 10, "title": "Sample: Market makers and liquidity", "text": "Market makers continuously quote both bid and ask prices, earning the spread while providing liquidity. Their presence narrows spreads and makes it easier for other traders to execute large orders with less slippage."}
+  {
+    "id": 1,
+    "title": "Sample: Bitcoin consolidates as ETF inflows slow",
+    "text": "Bitcoin traded in a tight range this week as spot ETF inflows slowed. Analysts say consolidation after a strong rally is normal, and support levels are being watched closely."
+  },
+  {
+    "id": 2,
+    "title": "Sample: Ethereum upgrade lowers layer-2 fees",
+    "text": "A recent Ethereum network upgrade reduced data costs for layer-2 rollups, lowering transaction fees. Developers expect higher on-chain activity and improved user experience."
+  },
+  {
+    "id": 3,
+    "title": "Sample: Solana network activity hits new high",
+    "text": "Solana recorded a new high in daily active addresses, driven by decentralized exchange volume. Validators reported stable performance despite the increased load."
+  },
+  {
+    "id": 4,
+    "title": "Sample: What is a limit order?",
+    "text": "A limit order is an instruction to buy or sell at a specified price or better. A buy limit order executes at the limit price or lower, a sell limit order at the limit price or higher. Unfilled limit orders rest on the order book."
+  },
+  {
+    "id": 5,
+    "title": "Sample: How price-time priority works",
+    "text": "Exchanges match orders using price-time priority: the best price is filled first, and among equal prices the order that arrived earlier is filled first. This rewards liquidity providers who quote tighter prices."
+  },
+  {
+    "id": 6,
+    "title": "Sample: Understanding the bid-ask spread",
+    "text": "The bid-ask spread is the gap between the highest bid and the lowest ask. Tight spreads indicate deep liquidity, wide spreads indicate thin markets and higher trading costs, especially for market takers."
+  },
+  {
+    "id": 7,
+    "title": "Sample: Risk management basics",
+    "text": "Position sizing, stop-loss levels and diversification are core risk management tools. Traders commonly risk only a small percentage of capital on a single trade to survive losing streaks."
+  },
+  {
+    "id": 8,
+    "title": "Sample: Reading RSI and moving averages",
+    "text": "The relative strength index above 70 is often read as overbought and below 30 as oversold. A fast moving average crossing above a slow one is a common bullish signal, but signals lag and can whipsaw in ranging markets."
+  },
+  {
+    "id": 9,
+    "title": "Sample: Crypto volatility and leverage",
+    "text": "Crypto assets are highly volatile. Leverage amplifies both gains and losses, and sudden price moves can trigger liquidations. Beginners are advised to avoid leverage until they understand margin rules."
+  },
+  {
+    "id": 10,
+    "title": "Sample: Market makers and liquidity",
+    "text": "Market makers continuously quote both bid and ask prices, earning the spread while providing liquidity. Their presence narrows spreads and makes it easier for other traders to execute large orders with less slippage."
+  }
 ]
